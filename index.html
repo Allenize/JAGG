@@ -20,7 +20,7 @@
 html,body{width:100%;height:100%;overflow:hidden;font-family:'Syne',sans-serif;user-select:none}
 :root{
   /* DARK MODE — Deep Green */
-  --bg:#020617;--glass:rgba(2,12,6,.85);--border:rgba(0,200,100,.22);--border-hot:rgba(0,255,136,.6);
+  --bg:radial-gradient(circle at top,#022c22,#010a07 60%,#000000);--glass:rgba(2,12,6,.85);--border:rgba(0,200,100,.22);--border-hot:rgba(0,255,136,.6);
   --txt:#e0fff0;--tsec:#7dd8a0;--tdim:#2d6645;--tmic:#123322;
   --ac1:#00a050;--ac2:#00e5c8;--ac3:#00ff88;--ac4:#22d3ee;--ac5:#00e5a0;
   --gp:rgba(0,200,100,.45);--gc:rgba(0,229,200,.3);--part:rgba(0,255,136,.45);
@@ -44,7 +44,7 @@ body{background:var(--bg);color:var(--txt);transition:background .8s,color .5s;c
 /* CANVAS — must be above bg layers, below UI */
 #three-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:2;display:block;pointer-events:none}
 /* BG */
-.bg-nebula{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 80% 70% at 50% 50%,rgba(0,180,80,.22) 0%,transparent 65%),radial-gradient(ellipse 40% 40% at 80% 15%,rgba(0,200,160,.09) 0%,transparent 55%),radial-gradient(ellipse 35% 35% at 15% 85%,rgba(0,255,136,.06) 0%,transparent 50%),linear-gradient(135deg,#020617,#041c12,#052e16);transition:background .8s}
+.bg-nebula{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 80% 70% at 50% 50%,rgba(0,180,80,.22) 0%,transparent 65%),radial-gradient(ellipse 40% 40% at 80% 15%,rgba(0,200,160,.09) 0%,transparent 55%),radial-gradient(ellipse 35% 35% at 15% 85%,rgba(0,255,136,.06) 0%,transparent 50%),radial-gradient(circle at top,#022c22,#010a07 60%,#000000);transition:background .8s}
 .lm .bg-nebula{background:radial-gradient(ellipse 80% 70% at 50% 50%,rgba(22,163,74,.12) 0%,transparent 65%),radial-gradient(ellipse 40% 40% at 80% 20%,rgba(13,148,136,.08) 0%,transparent 55%),linear-gradient(135deg,#ecfdf5,#d1fae5,#bbf7d0)}
 .bg-grid{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(0,200,100,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,100,.04) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse 75% 75% at 50% 50%,black 30%,transparent 80%)}
 .scanlines{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.012;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,200,100,1) 2px,rgba(0,200,100,1) 3px)}
@@ -85,11 +85,11 @@ body{background:var(--bg);color:var(--txt);transition:background .8s,color .5s;c
 .orb-ai::after{content:'AI';position:absolute;top:-7px;right:-4px;background:var(--ac1);color:#000;font-size:.42rem;font-weight:900;padding:1px 4px;border-radius:999px;font-family:'JetBrains Mono',monospace;letter-spacing:.04em}
 /* Tool badge */
 .orb-tool::before{content:'⚙';position:absolute;top:-6px;left:-4px;font-size:.55rem;opacity:.7}
-/* Category color accent on left border */
-.orb-lang{border-left:2.5px solid #f7df1e!important}
-.orb-frontend{border-left:2.5px solid #61dafb!important}
-.orb-backend{border-left:2.5px solid #68a063!important}
-.orb-db{border-left:2.5px solid #4479a1!important}
+/* Category color accent — no left border, use subtle icon color only */
+.orb-lang{border-left:none!important}
+.orb-frontend{border-left:none!important}
+.orb-backend{border-left:none!important}
+.orb-db{border-left:none!important}
 /* Orbit ring visuals */
 .orb-ring{position:absolute;border-radius:50%;border:1px solid rgba(0,200,100,.06);pointer-events:none;transform:translate(-50%,-50%)}
 /* Focused item highlight */
@@ -628,6 +628,7 @@ canvas3.height = window.innerHeight;
 // High-quality renderer — antialias + pixel ratio for smooth rendering
 const renderer = new T.WebGLRenderer({canvas: canvas3, antialias: true, alpha: true, powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x000000, 0);
 
@@ -635,25 +636,28 @@ const scene = new T.Scene();
 const camera = new T.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
 camera.position.z = 5;
 
-// Lights — strong enough to always show the sphere
-scene.add(new T.AmbientLight(0xffffff, 1.0));
-const dirLight = new T.DirectionalLight(0x00ff88, 3.5);
-dirLight.position.set(5, 8, 5);
+// Lights — realistic setup for MeshPhysicalMaterial look
+scene.add(new T.AmbientLight(0xffffff, 0.15));
+const dirLight = new T.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(3, 3, 3);
 scene.add(dirLight);
 const pL1 = new T.PointLight(0x00ff88, 6, 20); pL1.position.set(3, 3, 4); scene.add(pL1);
-const pL2 = new T.PointLight(0x00e5c8, 4, 16); pL2.position.set(-3, -2, 3); scene.add(pL2);
-const pL3 = new T.PointLight(0x44ff99, 3, 14); pL3.position.set(0, 5, 2); scene.add(pL3);
-const pL4 = new T.PointLight(0x22d3ee, 2, 12); pL4.position.set(-2, 2, -2); scene.add(pL4);
+const pL2 = new T.PointLight(0x00e5c8, 3, 16); pL2.position.set(-3, -2, -2); scene.add(pL2);
+// Environment-style fill lights (simulating Environment preset="city")
+const pL3 = new T.PointLight(0xffffff, 2, 18); pL3.position.set(0, 8, 0); scene.add(pL3);
+const pL4 = new T.PointLight(0x4488ff, 1.5, 14); pL4.position.set(-4, 2, -3); scene.add(pL4);
+const pL5 = new T.PointLight(0xffaa44, 1.2, 12); pL5.position.set(4, -2, -2); scene.add(pL5);
 
-// Main sphere — smoother 64-segment, darker material
+// Main sphere — 64-segment ultra-dark green with physical material
 const wGeo = new T.SphereGeometry(1.42, 64, 64);
 const origW = wGeo.attributes.position.array.slice();
-const wMat = new T.MeshPhongMaterial({
-  color: 0x14532d,
-  emissive: 0x052e16,
-  emissiveIntensity: 1.1,
-  shininess: 220,
-  specular: new T.Color(0x44ff99)
+const wMat = new T.MeshStandardMaterial({
+  color: 0x021a14,       // VERY dark green (almost black)
+  emissive: 0x022c22,   // subtle inner glow
+  emissiveIntensity: 0.3,
+  roughness: 0.35,       // controls smoothness
+  metalness: 0.4,        // slight metallic feel
+  envMapIntensity: 1.0,
 });
 const waveMesh = new T.Mesh(wGeo, wMat);
 scene.add(waveMesh);
@@ -731,15 +735,15 @@ let lastClickT = 0, idleTimer = 0, idleActive = false;
 function applyWaveTheme(){
   if(isDark){
     renderer.setClearColor(0x000000, 0);
-    wMat.color.set(0x14532d); wMat.emissive.set(0x052e16); wMat.emissiveIntensity = 1.1;
-    pL1.intensity = 6; pL2.intensity = 4; pL3.intensity = 3; pL4.intensity = 2;
+    wMat.color.set(0x021a14); wMat.emissive.set(0x022c22); wMat.emissiveIntensity = 0.3;
+    pL1.intensity = 6; pL2.intensity = 3; pL3.intensity = 2; pL4.intensity = 1.5; pL5.intensity = 1.2;
     pMat.color.set(0xffffff); pMat.opacity = .65;
     ring1.material.color.set(0x00ff88); ring2.material.color.set(0x00e5c8);
     ring3.material.color.set(0x44ff99); ring4.material.color.set(0x22d3ee);
   } else {
     renderer.setClearColor(0x000000, 0);
-    wMat.color.set(0x166534); wMat.emissive.set(0x14532d); wMat.emissiveIntensity = 0.65;
-    pL1.intensity = 4; pL2.intensity = 3; pL3.intensity = 2; pL4.intensity = 1.5;
+    wMat.color.set(0x021a14); wMat.emissive.set(0x14532d); wMat.emissiveIntensity = 0.35;
+    pL1.intensity = 4; pL2.intensity = 2.5; pL3.intensity = 1.8; pL4.intensity = 1.2; pL5.intensity = 1.0;
     pMat.color.set(0xffffff); pMat.opacity = .45;
     ring1.material.color.set(0x22c55e); ring2.material.color.set(0x0d9488);
     ring3.material.color.set(0x16a34a); ring4.material.color.set(0x0891b2);
@@ -792,10 +796,10 @@ function animate(){
   }
   wp.needsUpdate = true; wGeo.computeVertexNormals();
 
-  // Rotation
+  // Rotation — slow auto-spin for depth perception + mouse influence
   targetRot.x += (-mouseNorm.y*.3 - targetRot.x)*.055;
   targetRot.y += (mouseNorm.x*.35 - targetRot.y)*.055;
-  waveMesh.rotation.y += (.003 + targetRot.y*.02);
+  waveMesh.rotation.y += (.003 + targetRot.y*.02);  // base slow rotation always on
   waveMesh.rotation.x += (targetRot.x*.015 - waveMesh.rotation.x)*.05;
   wfMesh.rotation.y = waveMesh.rotation.y*.6;
   wfMesh.rotation.x = waveMesh.rotation.x*.5;
@@ -818,9 +822,10 @@ function animate(){
 
   // Glow pulse
   wavePulse = waveHov ? Math.min(wavePulse+.05, 1) : Math.max(wavePulse-.04, 0);
-  pL1.intensity = 6 + wavePulse*6; pL2.intensity = 4 + wavePulse*4;
-  pL3.intensity = 3 + wavePulse*3; pL4.intensity = 2 + wavePulse*2;
-  wMat.emissiveIntensity = (isDark ? .8 : .5) + wavePulse*.4;
+  pL1.intensity = 6 + wavePulse*6; pL2.intensity = 3 + wavePulse*3;
+  pL3.intensity = 2 + wavePulse*2; pL4.intensity = 1.5 + wavePulse*1.5; pL5.intensity = 1.2 + wavePulse*1.2;
+  // Slow rotation for depth perception (per PRO TIP)
+  wMat.emissiveIntensity = (isDark ? 0.3 : 0.35) + wavePulse*.4 + Math.sin(gTime*1.2)*.06;
 
   // Spikes
   if(spikeActive){
