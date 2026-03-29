@@ -1288,19 +1288,27 @@ async function detectChatMode() {
 detectChatMode();
 let aiMode = 'professional';
 
-// Update mode indicator badge
+// Update mode indicator badge AND header subtitle
 function updateModeIndicator(mode) {
   const dot = document.getElementById('cmi-dot');
   const txt = document.getElementById('cmi-text');
-  if (!dot || !txt) return;
-  if (mode === 'online') {
-    dot.className = 'cmi-dot online';
-    txt.className = 'online';
-    txt.textContent = '🟢 Online AI Mode';
-  } else {
-    dot.className = 'cmi-dot offline';
-    txt.className = 'offline';
-    txt.textContent = '🔴 Offline Mode';
+  const sub = document.getElementById('chat-sub-lbl');
+  if (dot && txt) {
+    if (mode === 'online') {
+      dot.className = 'cmi-dot online';
+      txt.className = 'online';
+      txt.textContent = '🟢 Online AI Mode';
+    } else {
+      dot.className = 'cmi-dot offline';
+      txt.className = 'offline';
+      txt.textContent = '🔴 Offline Mode';
+    }
+  }
+  // Also sync the header subtitle
+  if (sub) {
+    const modeLabels = { professional: 'Professional', friendly: 'Friendly', technical: 'Technical' };
+    const modeLabel = modeLabels[aiMode] || 'Professional';
+    sub.textContent = (mode === 'online' ? '● Online' : '● Offline') + ' · ' + modeLabel;
   }
 }
 
@@ -1676,9 +1684,7 @@ document.querySelectorAll('.ai-mode-btn').forEach(btn=>{
     aiMode=btn.dataset.mode;
     document.querySelectorAll('.ai-mode-btn').forEach(b=>b.classList.remove('on'));
     btn.classList.add('on');
-    const modes={professional:'Professional',friendly:'Friendly',technical:'Technical'};
-    const sub=document.getElementById('chat-sub-lbl');
-    if(sub) sub.textContent='\u25cf Online \u00b7 '+modes[aiMode];
+    updateModeIndicator(chatMode); // re-sync both badge and subtitle with current connection state
     initAudio();playHoverSound();
   });
 });
