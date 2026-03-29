@@ -1268,7 +1268,16 @@ function closeSecretFn(){secretEl.classList.remove('on');}
 /* ======== CHATBOT — HYBRID OFFLINE + ONLINE MODE ======== */
 
 /* ── CONNECTIVITY STATE ── */
-let chatMode = navigator.onLine ? 'online' : 'offline'; // 'online' | 'offline'
+let chatMode = 'offline'; // start offline, upgrade if API reachable
+async function detectChatMode() {
+  if (!navigator.onLine) return;
+  try {
+    const r = await fetch('https://api.anthropic.com', { method: 'HEAD', signal: AbortSignal.timeout(3000) });
+    chatMode = 'online';
+    updateModeIndicator('online');
+  } catch { /* stay offline */ }
+}
+detectChatMode();
 let aiMode = 'professional';
 
 // Update mode indicator badge
