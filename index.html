@@ -292,6 +292,15 @@ body{background:var(--bg);color:var(--txt);transition:background .8s,color .5s;c
 #chat-voice:hover{border-color:var(--border-hot);color:var(--ac3)}
 #chat-voice.listening{border-color:#ef4444;color:#ef4444;animation:vPulse 1s ease-in-out infinite}
 @keyframes vPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.5)}50%{box-shadow:0 0 0 5px rgba(239,68,68,0)}}
+/* ═══ CHAT MODE INDICATOR ═══ */
+#chat-mode-indicator{display:flex;align-items:center;gap:5px;padding:4px .75rem 0;font-family:'JetBrains Mono',monospace;font-size:.56rem;letter-spacing:.06em}
+.cmi-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;transition:background .4s}
+.cmi-dot.online{background:#00e5a0;box-shadow:0 0 6px rgba(0,229,160,.7);animation:sPulse 2s ease-in-out infinite}
+.cmi-dot.offline{background:#f87171;box-shadow:0 0 6px rgba(248,113,113,.5)}
+#cmi-text{transition:color .4s}
+#cmi-text.online{color:#00e5a0}
+#cmi-text.offline{color:#f87171}
+
 /* ═══ CHAT SUGGEST ═══ */
 #chat-suggest{display:flex;gap:4px;flex-wrap:wrap;padding:4px .75rem 2px;min-height:0}
 /* ═══ CHAT CODE BLOCKS ═══ */
@@ -404,6 +413,10 @@ body{background:var(--bg);color:var(--txt);transition:background .8s,color .5s;c
     <div class="chat-avatar"><i class="fas fa-robot"></i></div>
     <div style="flex:1"><div class="chat-name" id="chat-name-lbl">JAGG Assistant</div><div class="chat-sub" id="chat-sub-lbl">● Online · Professional</div></div>
     <button onclick="toggleChat()" style="background:none;border:none;color:var(--tdim);cursor:pointer;font-size:.8rem"><i class="fas fa-times"></i></button>
+  </div>
+  <div id="chat-mode-indicator">
+    <div class="cmi-dot online" id="cmi-dot"></div>
+    <span id="cmi-text" class="online">🟢 Online AI Mode</span>
   </div>
   <div id="ai-mode-bar">
     <button class="ai-mode-btn on" data-mode="professional">Pro</button>
@@ -1252,8 +1265,42 @@ function closeMottoFn(){mottoEl.classList.remove('on');}
 function openSecret(){closeMottoFn();secretEl.classList.add('on');}
 function closeSecretFn(){secretEl.classList.remove('on');}
 
-/* ======== CHATBOT (AI PERSONALITY + EXPANDED KNOWLEDGE) ======== */
-let aiMode='professional';
+/* ======== CHATBOT — HYBRID OFFLINE + ONLINE MODE ======== */
+
+/* ── CONNECTIVITY STATE ── */
+let chatMode = navigator.onLine ? 'online' : 'offline'; // 'online' | 'offline'
+let aiMode = 'professional';
+
+// Update mode indicator badge
+function updateModeIndicator(mode) {
+  const dot = document.getElementById('cmi-dot');
+  const txt = document.getElementById('cmi-text');
+  if (!dot || !txt) return;
+  if (mode === 'online') {
+    dot.className = 'cmi-dot online';
+    txt.className = 'online';
+    txt.textContent = '🟢 Online AI Mode';
+  } else {
+    dot.className = 'cmi-dot offline';
+    txt.className = 'offline';
+    txt.textContent = '🔴 Offline Mode';
+  }
+}
+
+// Listen for real-time connectivity changes — seamless, no chat disruption
+window.addEventListener('online', () => {
+  chatMode = 'online';
+  updateModeIndicator('online');
+  showToast('🟢 Connected — Online AI Mode active');
+});
+window.addEventListener('offline', () => {
+  chatMode = 'offline';
+  updateModeIndicator('offline');
+  showToast('🔴 No connection — Offline Mode active');
+});
+
+// Set initial indicator on page load
+updateModeIndicator(chatMode);
 
 // ── KNOWLEDGE BASE ──
 const KB={
@@ -1491,6 +1538,9 @@ function toggleChat(){
   chatOpen=!chatOpen;
   document.getElementById('chat-window').classList.toggle('open',chatOpen);
   if(chatOpen){
+    // Re-check connectivity on open
+    chatMode = navigator.onLine ? 'online' : 'offline';
+    updateModeIndicator(chatMode);
     showChatSuggests();
     const msgs=document.getElementById('chat-msgs');
     if(!msgs.children.length) setTimeout(()=>addBotMsg(AI_REPLIES[aiMode].greet),400);
@@ -1531,19 +1581,77 @@ function sendChat(){
   const text=inp.value.trim();if(!text)return;
   inp.value='';hideChatSuggests();
   addUserMsg(text);
-  // Show "thinking" label briefly
+
+  // Show thinking indicator
   const msgs=document.getElementById('chat-msgs');
   const thinking=document.createElement('div');
   thinking.className='chat-msg bot';
   thinking.style.cssText='opacity:.6;font-size:.6rem;font-style:italic';
   thinking.innerHTML='<span style="color:var(--tdim)">AI is thinking</span><span class="tcur">...</span>';
   msgs.appendChild(thinking);msgs.scrollTop=msgs.scrollHeight;
-  const replies=getBotReply(text);
-  const delay=Math.min(replies[0].length*8+400,1200);
-  setTimeout(()=>{
-    thinking.remove();
-    addBotMsg(replies[Math.floor(Math.random()*replies.length)]);
-  },delay);
+
+  // ── ROUTING: Online → /api/chat, Offline → hardcoded KB ──
+  if(chatMode==='online' && navigator.onLine){
+    callOnlineAPI(text).then(reply=>{
+      thinking.remove();
+      addBotMsg(reply);
+    }).catch(()=>{
+      // Fallback to offline on API failure
+      thinking.remove();
+      const replies=getBotReply(text);
+      addBotMsg(replies[Math.floor(Math.random()*replies.length)]);
+      showToast('⚠️ AI API unavailable — using offline responses');
+      chatMode='offline';
+      updateModeIndicator('offline');
+    });
+  } else {
+    // Offline mode — use hardcoded KB
+    const replies=getBotReply(text);
+    const delay=Math.min(replies[0].length*8+400,1200);
+    setTimeout(()=>{
+      thinking.remove();
+      addBotMsg(replies[Math.floor(Math.random()*replies.length)]);
+    },delay);
+  }
+}
+
+/* ── ONLINE API CALL ── */
+async function callOnlineAPI(userMessage){
+  const TIMEOUT_MS = 8000;
+  // Build context from chat history (last 4 messages for brevity)
+  const history = chatMemory.slice(-4).map(m=>({
+    role: m.role==='bot'?'assistant':'user',
+    content: m.text
+  }));
+
+  const controller = new AbortController();
+  const timer = setTimeout(()=>controller.abort(), TIMEOUT_MS);
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      signal: controller.signal,
+      body: JSON.stringify({
+        message: userMessage,
+        mode: aiMode,
+        history: history,
+        context: {
+          name: 'John Allen Agaton Guerra',
+          role: 'BSIT 4th Year at PLSP',
+          skills: 'JavaScript, PHP, React, MySQL, Node.js, Networking',
+          available: 'OJT 2025'
+        }
+      })
+    });
+    clearTimeout(timer);
+    if(!res.ok) throw new Error('API error: '+res.status);
+    const data = await res.json();
+    return data.reply || data.message || 'Sorry, I could not generate a response.';
+  } catch(e) {
+    clearTimeout(timer);
+    throw e; // bubble to fallback in sendChat
+  }
 }
 
 document.querySelectorAll('.ai-mode-btn').forEach(btn=>{
