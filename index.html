@@ -1272,9 +1272,17 @@ let chatMode = 'offline'; // start offline, upgrade if API reachable
 async function detectChatMode() {
   if (!navigator.onLine) return;
   try {
-    const r = await fetch('https://api.anthropic.com', { method: 'HEAD', signal: AbortSignal.timeout(3000) });
-    chatMode = 'online';
-    updateModeIndicator('online');
+    // Ping our own /api/chat endpoint instead of api.anthropic.com (which blocks CORS HEAD requests)
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ message: 'ping', mode: 'professional', history: [], context: { name: 'JAGG', skills: '' } }),
+      signal: AbortSignal.timeout(5000)
+    });
+    if (r.ok || r.status === 200) {
+      chatMode = 'online';
+      updateModeIndicator('online');
+    }
   } catch { /* stay offline */ }
 }
 detectChatMode();
@@ -1547,9 +1555,9 @@ function toggleChat(){
   chatOpen=!chatOpen;
   document.getElementById('chat-window').classList.toggle('open',chatOpen);
   if(chatOpen){
-    // Re-check connectivity on open
-    chatMode = navigator.onLine ? 'online' : 'offline';
-    updateModeIndicator(chatMode);
+    // Re-check connectivity on open (async, won't block UI)
+    if(navigator.onLine) detectChatMode();
+    else { chatMode='offline'; updateModeIndicator('offline'); }
     showChatSuggests();
     const msgs=document.getElementById('chat-msgs');
     if(!msgs.children.length) setTimeout(()=>addBotMsg(AI_REPLIES[aiMode].greet),400);
